@@ -62,31 +62,39 @@ export default function DraftScreen({ round, spin, spinning, roster, rerolls, on
 
         {/* ── Left: spin tiles + player selection ──────────────────── */}
         <div>
-          {/* Spin tiles */}
-          <div className="flex items-end gap-3 mb-4">
+          {/* Reroll links — sit above their respective tile when spin exists */}
+          {spin && !spinning && (
+            <div className="grid grid-cols-2 gap-3 mb-1">
+              <button
+                disabled={rerolls.team <= 0}
+                onClick={() => onReroll(rerollFranchise(spin), "team")}
+                className="text-left text-xs font-stat text-amber-500/70 hover:text-amber-400 disabled:opacity-25 transition-colors">
+                ↻ New team ({rerolls.team})
+              </button>
+              <button
+                disabled={rerolls.era <= 0}
+                onClick={() => onReroll(rerollDecade(spin), "era")}
+                className="text-left text-xs font-stat text-purple-400/70 hover:text-purple-400 disabled:opacity-25 transition-colors">
+                ↻ New era ({rerolls.era})
+              </button>
+            </div>
+          )}
+
+          {/* Team + Era tiles — equal height via flex column stretch */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
             <SpinTile label="TEAM" value={spin?.franchise ?? "—"} color="#f59e0b"
               spinning={spinning} sub={spin ? (FRANCHISES[spin.franchise]?.name ?? "") : ""} />
             <SpinTile label="ERA" value={spin ? DECADE_LABELS[spin.decade] : "—"} color="#a855f7"
               spinning={spinning} sub="" />
-            {!spin && !spinning && (
-              <button onClick={onSpin}
-                className="rounded-md bg-orange-600 hover:bg-orange-500 px-8 py-3 font-bold tracking-wider text-white">
-                SPIN
-              </button>
-            )}
-            {spin && !spinning && (
-              <div className="flex flex-col gap-1 text-xs">
-                <button disabled={rerolls.team <= 0} onClick={() => onReroll(rerollFranchise(spin), "team")}
-                  className="rounded border border-amber-600/60 text-amber-400 px-2 py-1 disabled:opacity-30 hover:bg-amber-500/10">
-                  ↻ Team ({rerolls.team})
-                </button>
-                <button disabled={rerolls.era <= 0} onClick={() => onReroll(rerollDecade(spin), "era")}
-                  className="rounded border border-purple-600/60 text-purple-400 px-2 py-1 disabled:opacity-30 hover:bg-purple-500/10">
-                  ↻ Era ({rerolls.era})
-                </button>
-              </div>
-            )}
           </div>
+
+          {/* SPIN — wide, below tiles */}
+          {!spin && !spinning && (
+            <button onClick={onSpin}
+              className="w-full rounded-md bg-orange-600 hover:bg-orange-500 py-3 font-bold tracking-wider text-white">
+              SPIN
+            </button>
+          )}
 
           {/* Player list / selected mini-card — swap with animation */}
           <AnimatePresence mode="wait" initial={false}>
@@ -221,12 +229,13 @@ function SpinTile({ label, value, sub, color, spinning }: {
   label: string; value: string; sub?: string; color: string; spinning: boolean;
 }) {
   return (
-    <div className="rounded-lg border-2 px-6 py-3 text-center min-w-28" style={{ borderColor: color }}>
-      <div className="text-[10px] font-stat tracking-widest" style={{ color }}>{label}</div>
+    <div className="rounded-lg border-2 px-4 py-4 flex flex-col items-center justify-center" style={{ borderColor: color }}>
+      <div className="text-[10px] font-stat tracking-widest mb-1" style={{ color }}>{label}</div>
       <div key={value + String(spinning)} className={`font-display text-3xl font-bold ${spinning ? "spinflash" : ""}`}>
         {value}
       </div>
-      {sub ? <div className="text-[10px] text-zinc-500">{sub}</div> : null}
+      {/* Always render to keep both tiles the same height */}
+      <div className="text-[10px] text-zinc-500 mt-1 h-4 leading-4">{sub ?? ""}</div>
     </div>
   );
 }
