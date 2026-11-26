@@ -1,23 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 
-async function sha256Hex(input: string): Promise<string> {
-  const data = new TextEncoder().encode(input);
-  const digest = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+import { GAME_SESSION_COOKIE, validGameSession } from "@/lib/auth/game-session";
 
 export async function proxy(request: NextRequest) {
   const password = process.env.GAME_PASSWORD;
-  // No password configured (local dev) — open door.
-  if (!password) return NextResponse.next();
+  if (!password) {
+    return process.env.NODE_ENV === "production"
+      ? NextResponse.json({ error: "Game Seven is unavailable" }, { status: 503 })
+      : NextResponse.next();
+  }
 
-  const cookie = request.cookies.get("g7_auth")?.value;
-  const expected = await sha256Hex(password);
-  if (cookie === expected) return NextResponse.next();
+  const pathname = request.nextUrl.pathname;
+  if (pathname === "/gate" || pathname === "/api/gate") return NextResponse.next();
 
-  if (request.nextUrl.pathname.startsWith("/gate") || request.nextUrl.pathname.startsWith("/api/gate")) {
+  if (validGameSession(request.cookies.get(GAME_SESSION_COOKIE)?.value, password)) {
     return NextResponse.next();
   }
 

@@ -1,7 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { RECAP_SYSTEM_PROMPT, buildRecapUserPrompt, type RecapInput } from "@/lib/recap/voice";
 import { templateRecap } from "@/lib/recap/template";
+import { GAME_SESSION_COOKIE, validGameSession } from "@/lib/auth/game-session";
 
 export const maxDuration = 60;
 
@@ -15,10 +16,18 @@ const RECAP_SCHEMA = {
   additionalProperties: false as const,
 };
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const password = process.env.GAME_PASSWORD;
+  if (!password && process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Game Seven is unavailable" }, { status: 503 });
+  }
+  if (password && !validGameSession(request.cookies.get(GAME_SESSION_COOKIE)?.value, password)) {
+    return NextResponse.json({ error: "Sign in to request a recap" }, { status: 401 });
+  }
+
   const input = (await request.json()) as RecapInput;
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!password || process.env.ENABLE_PAID_RECAP !== "true" || !process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ ...templateRecap(input), source: "template" });
   }
 
